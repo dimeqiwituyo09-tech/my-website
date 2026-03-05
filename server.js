@@ -5,7 +5,7 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 // 【重要】在这里填入你的 Football-Data Token
-const API_TOKEN = '这里填入你的TOKEN'; 
+const API_TOKEN = 'f8b27ebfc2364ef6b2b67d1183baa5c4'; 
 
 // 让服务器能够读取你的 index.html
 app.use(express.static(path.join(__dirname)));
@@ -24,4 +24,5 @@ app.get('/api/matches', async (req, res) => {
 
 app.listen(PORT, () => {
     console.log(`服务器已在端口 ${PORT} 启动`);
+
 });
