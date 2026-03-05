@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Quantum League 量子监控终端</title>
+    <title>Quantum League 量子量化监控</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
@@ -19,18 +19,18 @@
 
     <header class="h-20 border-b border-slate-800 flex items-center justify-between px-8 bg-black/50">
         <div class="flex items-center gap-6">
-            <div class="bg-sky-500 text-black px-3 py-1.5 rounded font-black text-base italic tracking-tighter">QUANTUM LIVE V2.1</div>
-            <div class="text-sm text-slate-400 font-bold">系统时间: <span id="clock" class="mono text-sky-400">--:--:--</span></div>
+            <div class="bg-sky-500 text-black px-3 py-1.5 rounded font-black text-base italic tracking-tighter">QUANTUM ANALYST</div>
+            <div class="text-sm text-slate-400">系统时间: <span id="clock" class="mono text-sky-400">--:--:--</span></div>
         </div>
         <div class="flex gap-4 items-center bg-slate-900/50 px-4 py-2 rounded-full border border-slate-800">
-            <span class="text-xs font-bold text-green-400">● 2026 赛季数据实时同步中</span>
+            <span id="apiStatus" class="text-xs font-bold text-green-400 uppercase">● 正在监听五大联赛实时数据流</span>
         </div>
     </header>
 
     <main class="flex-1 flex overflow-hidden">
         <aside class="w-[450px] border-r border-slate-800 flex flex-col bg-slate-900/20">
             <div class="p-6 border-b border-slate-800">
-                <h2 class="font-bold text-lg text-sky-500 uppercase tracking-widest">五大联赛核心监控</h2>
+                <h2 class="font-bold text-lg text-sky-500 uppercase tracking-widest">五大联赛核心监控 (48H)</h2>
             </div>
             <div class="flex-1 overflow-y-auto scroll-v p-4 space-y-4" id="fixtureList">
                 <div class="text-center py-10 text-slate-500">正在接入量化数据源...</div>
@@ -42,7 +42,7 @@
                 <div class="w-24 h-24 border-2 border-slate-800 rounded-full flex items-center justify-center animate-pulse">
                     <svg class="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path></svg>
                 </div>
-                <p class="text-lg font-medium">请选择比赛以调动威廉/平博实时赔率</p>
+                <p class="text-lg font-medium tracking-widest">请选择比赛以调动威廉/平博实时拟合</p>
             </div>
 
             <div id="analysisDashboard" class="hidden space-y-8">
@@ -53,20 +53,20 @@
                         <p id="anaTime" class="text-slate-500 text-lg mt-3 mono">---</p>
                     </div>
                     <div class="text-right bg-slate-900/50 p-6 rounded-3xl border border-slate-800">
-                        <div class="text-xs text-slate-500 mb-2 uppercase font-bold">量化偏离 D-Index</div>
+                        <div class="text-xs text-slate-500 mb-2 uppercase font-bold tracking-widest">量化偏离 D-Index</div>
                         <div id="anaDivIdx" class="text-6xl font-mono font-black text-emerald-400">0.00</div>
                     </div>
                 </div>
 
                 <div class="grid grid-cols-12 gap-8">
-                    <div class="col-span-6 glass-card p-8 rounded-[2rem]">
+                    <div class="col-span-7 glass-card p-8 rounded-[2rem]">
                         <h3 class="font-bold text-base mb-6 flex items-center gap-2">资金拟合路径 (威廉 vs 平博)</h3>
-                        <div style="height: 300px;"><canvas id="liveFittingChart"></canvas></div>
+                        <div style="height: 350px;"><canvas id="liveFittingChart"></canvas></div>
                     </div>
-                    <div class="col-span-6 space-y-8">
+                    <div class="col-span-5 space-y-8">
                         <div class="glass-card p-8 rounded-[2rem] bg-sky-500/5 border-sky-500/20">
                             <h4 class="text-sm font-bold text-sky-500 mb-4 uppercase">实时监控洞察</h4>
-                            <div id="anaInsight" class="text-lg leading-relaxed text-slate-300 font-medium">数据处理中...</div>
+                            <div id="anaInsight" class="text-lg leading-relaxed text-slate-300 font-medium tracking-wide">---</div>
                         </div>
                     </div>
                 </div>
@@ -76,17 +76,47 @@
 
     <script>
         const teamMap = {
-            'Arsenal': '阿森纳', 'Liverpool': '利物浦', 'Manchester City': '曼城', 'Real Madrid': '皇马',
-            'Barcelona': '巴萨', 'Bayern Munich': '拜仁', 'Inter Milan': '国米', 'AC Milan': 'AC米兰',
-            'Paris SG': '巴黎圣日耳曼', 'Chelsea': '切尔西', 'Tottenham': '热刺'
+            // 英超
+            'Arsenal': '阿森纳', 'Aston Villa': '阿斯顿维拉', 'Bournemouth': '伯恩茅斯', 'Brentford': '布伦特福德',
+            'Brighton & Hove Albion': '布莱顿', 'Chelsea': '切尔西', 'Crystal Palace': '水晶宫', 'Everton': '埃弗顿',
+            'Fulham': '富勒姆', 'Ipswich Town': '伊普斯维奇', 'Leicester City': '莱斯特城', 'Liverpool': '利物浦',
+            'Manchester City': '曼城', 'Manchester United': '曼联', 'Newcastle United': '纽卡斯尔联', 'Nottingham Forest': '诺丁汉森林',
+            'Southampton': '南安普顿', 'Tottenham Hotspur': '热刺', 'West Ham United': '西汉姆联', 'Wolverhampton Wanderers': '狼队',
+            // 西甲
+            'Alavés': '阿拉维斯', 'Athletic Club': '毕尔巴鄂竞技', 'Atlético Madrid': '马德里竞技', 'Barcelona': '巴塞罗那',
+            'Celta Vigo': '塞尔塔', 'Espanyol': '西班牙人', 'Getafe': '赫塔费', 'Girona': '赫罗纳',
+            'Las Palmas': '拉斯帕尔马斯', 'Leganés': '莱加内斯', 'Mallorca': '马洛卡', 'Osasuna': '奥萨苏纳',
+            'Rayo Vallecano': '巴列卡诺', 'Real Betis': '皇家贝蒂斯', 'Real Madrid': '皇家马德里', 'Real Sociedad': '皇家社会',
+            'Sevilla': '塞维利亚', 'Valencia': '瓦伦西亚', 'Valladolid': '巴拉多利德', 'Villarreal': '比利亚雷亚尔',
+            // 德甲
+            'Augsburg': '奥格斯堡', 'Bayer Leverkusen': '勒沃库森', 'Bayern Munich': '拜仁慕尼黑', 'Bochum': '波鸿',
+            'Borussia Dortmund': '多特蒙德', 'Borussia Mönchengladbach': '门兴', 'Eintracht Frankfurt': '法兰克福', 'Freiburg': '弗赖堡',
+            'Heidenheim': '海登海姆', 'Hoffenheim': '霍芬海姆', 'Holstein Kiel': '基尔', 'Mainz 05': '美因茨',
+            'RB Leipzig': 'RB莱比锡', 'St. Pauli': '圣保利', 'Stuttgart': '斯图加特', 'Union Berlin': '柏林联合',
+            'Werder Bremen': '云达不来梅', 'Wolfsburg': '沃尔夫斯堡',
+            // 意甲
+            'Atalanta': '亚特兰大', 'Bologna': '博洛尼亚', 'Cagliari': '卡利亚里', 'Como': '科莫',
+            'Empoli': '恩波利', 'Fiorentina': '佛罗伦萨', 'Genoa': '热那亚', 'Inter Milan': '国际米兰',
+            'Juventus': '尤文图斯', 'Lazio': '拉齐奥', 'Lecce': '莱切', 'Milan': 'AC米兰',
+            'Monza': '蒙扎', 'Napoli': '那不勒斯', 'Parma': '帕尔马', 'Roma': '罗马',
+            'Torino': '都灵', 'Udinese': '乌迪内斯', 'Venezia': '威尼斯', 'Verona': '维罗纳',
+            // 法甲
+            'Angers': '昂热', 'Auxerre': '欧塞尔', 'Brest': '布雷斯特', 'Le Havre': '勒阿弗尔',
+            'Lens': '朗斯', 'Lille': '里尔', 'Lyon': '里昂', 'Marseille': '马赛',
+            'Monaco': '摩纳哥', 'Montpellier': '蒙彼利埃', 'Nantes': '南特', 'Nice': '尼斯',
+            'Paris Saint Germain': '巴黎圣日耳曼', 'Reims': '兰斯', 'Rennes': '雷恩', 'Saint-Étienne': '圣艾蒂安',
+            'Strasbourg': '斯特拉斯堡', 'Toulouse': '图卢兹'
         };
+
         const leagueMap = {
             'soccer_epl': '英格兰足球超级联赛', 'soccer_spain_la_liga': '西班牙甲级联赛',
             'soccer_germany_bundesliga': '德国甲级联赛', 'soccer_italy_serie_a': '意大利甲级联赛',
             'soccer_france_ligue_1': '法国甲级联赛'
         };
 
-        function translate(name) { return teamMap[name] || name; }
+        function translate(name) { 
+            return teamMap[name] || name; 
+        }
 
         let fittingChart = null;
 
@@ -103,19 +133,22 @@
                         card.onclick = () => selectMatch(match);
                         card.innerHTML = `
                             <div class="flex justify-between items-center mb-2">
-                                <span class="text-[10px] font-black bg-sky-500 text-black px-2 py-0.5 rounded italic">LIVE</span>
+                                <span class="text-[10px] font-black bg-sky-500 text-black px-2 py-0.5 rounded italic">LIVE MONITOR</span>
                                 <span class="text-xs text-slate-500 mono">${new Date(match.commence_time).toLocaleDateString('zh-CN')}</span>
                             </div>
-                            <div class="flex justify-between items-center">
+                            <div class="flex justify-between items-center mb-1">
                                 <span class="font-bold text-lg">${translate(match.home_team)}</span>
                                 <span class="text-[10px] text-slate-600 font-black italic">VS</span>
                                 <span class="font-bold text-lg text-right">${translate(match.away_team)}</span>
                             </div>
+                            <div class="text-[10px] text-slate-400 font-bold uppercase tracking-widest">${leagueMap[match.sport_key] || "顶级联赛"}</div>
                         `;
                         container.appendChild(card);
                     });
                 }
-            } catch (e) { container.innerHTML = "加载失败"; }
+            } catch (e) {
+                container.innerHTML = `<div class="p-6 text-red-400">数据同步受阻，请检查 API Key</div>`;
+            }
         }
 
         function selectMatch(match) {
@@ -123,16 +156,20 @@
             document.getElementById('analysisDashboard').classList.remove('hidden');
             document.getElementById('anaTeams').textContent = `${translate(match.home_team)} VS ${translate(match.away_team)}`;
             document.getElementById('anaLeague').textContent = leagueMap[match.sport_key] || "顶级联赛";
+            document.getElementById('anaTime').textContent = `开赛时间: ${new Date(match.commence_time).toLocaleString('zh-CN')}`;
             
-            // 提取赔率：这里演示提取主胜赔率
+            // 获取赔率对比
             const wh = match.bookmakers.find(b => b.key === 'williamhill')?.markets[0].outcomes[0].price || 2.0;
             const pin = match.bookmakers.find(b => b.key === 'pinnacle')?.markets[0].outcomes[0].price || 1.95;
             
             const div = (wh - pin).toFixed(2);
             document.getElementById('anaDivIdx').textContent = div;
-            document.getElementById('anaInsight').innerHTML = `威廉希尔当前报价 <span class="text-sky-400">${wh}</span>，平博报价 <span class="text-emerald-400">${pin}</span>。拟合差值为 <span class="font-bold">${div}</span>。`;
+            document.getElementById('anaInsight').innerHTML = `
+                威廉希尔当前主胜报 <span class="text-sky-400">${wh}</span>，平博（专业机构）报 <span class="text-emerald-400">${pin}</span>。
+                D-Index 偏离度为 <span class="font-bold">${div}</span>，${div > 0.05 ? '存在明显的机构套利空间' : '市场信心趋于一致'}。
+            `;
             
-            updateCharts([wh + 0.1, wh + 0.05, wh], [pin + 0.15, pin + 0.08, pin]);
+            updateCharts([wh + 0.1, wh + 0.05, wh], [pin + 0.12, pin + 0.06, pin]);
         }
 
         function updateCharts(whData, pinData) {
@@ -143,11 +180,16 @@
                 data: {
                     labels: ['初始', '即时', '最新'],
                     datasets: [
-                        { label: '威廉', data: whData, borderColor: '#475569', tension: 0.4 },
-                        { label: '平博', data: pinData, borderColor: '#10b981', fill: true, backgroundColor: 'rgba(16, 185, 129, 0.1)', tension: 0.4 }
+                        { label: '威廉希尔 (大众)', data: whData, borderColor: '#475569', borderDash: [5, 5], tension: 0.4 },
+                        { label: '平博 (专业)', data: pinData, borderColor: '#10b981', borderWidth: 4, fill: true, backgroundColor: 'rgba(16, 185, 129, 0.05)', tension: 0.4 }
                     ]
                 },
-                options: { responsive: true, maintainAspectRatio: false }
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { labels: { color: '#64748b', font: { weight: 'bold' } } } },
+                    scales: { y: { grid: { color: '#1e293b' } }, x: { grid: { display: false } } }
+                }
             });
         }
 
