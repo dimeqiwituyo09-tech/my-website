@@ -173,50 +173,7 @@ const f = {
             `;
             // 图表更新逻辑保持不变...
         }
-let fittingChart = null; // 放在函数外面，防止重复创建
 
-function updateCharts(williamData, pinnacleData) {
-    const ctx = document.getElementById('liveFittingChart').getContext('2d');
-    
-    // 如果图表已存在，先销毁它，否则会导致渲染重叠
-    if (fittingChart) {
-        fittingChart.destroy();
-    }
-
-    fittingChart = new Chart(ctx, {
-        type: 'line',
-        data: {
-            labels: ['12h前', '6h前', '3h前', '1h前', '临场'], // 这里实际应对应赔率变化时间
-            datasets: [
-                {
-                    label: '威廉希尔 (William Hill)',
-                    data: williamData, // 这里填入后端传来的赔率数组
-                    borderColor: '#475569',
-                    borderDash: [5, 5],
-                    tension: 0.4
-                },
-                {
-                    label: '平博 (Pinnacle) - 量化拟合',
-                    data: pinnacleData,
-                    borderColor: '#10b981',
-                    borderWidth: 4,
-                    fill: true,
-                    backgroundColor: 'rgba(16, 185, 129, 0.1)',
-                    tension: 0.4
-                }
-            ]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: { legend: { display: true, labels: { color: '#94a3b8' } } },
-            scales: {
-                y: { grid: { color: '#1e293b' }, ticks: { color: '#64748b' } },
-                x: { grid: { display: false }, ticks: { color: '#64748b' } }
-            }
-        }
-    });
-}
         window.onload = () => {
             fetchFixtures();
             setInterval(() => document.getElementById('clock').textContent = new Date().toLocaleTimeString(), 1000);
@@ -224,5 +181,6 @@ function updateCharts(williamData, pinnacleData) {
     </script>
 </body>
 </html>
+
 
 
