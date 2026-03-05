@@ -4,26 +4,25 @@ const path = require('path');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-const API_TOKEN = 'f8b27ebfc2364ef6b2b67d1183baa5c4'; 
+const ODDS_API_KEY = 'fcc47361ad5052aa8d4313832e628172'; 
 
 app.use(express.static(path.join(__dirname)));
 
-app.get('/api/matches', async (req, res) => {
+// 获取五大联赛实时赔率接口
+app.get('/api/odds', async (req, res) => {
     try {
-        // 增加 competitions 参数，锁定五大联赛代码
-        const response = await axios.get('https://api.football-data.org/v4/matches', {
-            headers: { 'X-Auth-Token': API_TOKEN },
+        const response = await axios.get(`https://api.the-odds-api.com/v4/sports/soccer_epl/odds/`, {
             params: {
-                competitions: 'PL,PD,BL1,SA,FL1' 
+                apiKey: ODDS_API_KEY,
+                regions: 'uk,eu', // 获取英国和欧洲区数据
+                markets: 'h2h',   // 胜平负赔率
+                bookmakers: 'williamhill,pinnacle' // 指定威廉和平博
             }
         });
         res.json(response.data);
     } catch (error) {
-        res.status(500).json({ error: '数据抓取失败' });
+        res.status(500).json({ error: '赔率数据抓取失败' });
     }
 });
 
-app.listen(PORT, () => {
-    console.log(`量子监控终端已启动`);
-});
-
+app.listen(PORT, () => console.log(`量化终端 2.0 启动`));
