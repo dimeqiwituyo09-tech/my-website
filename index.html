@@ -83,7 +83,33 @@
             'Serie A': '意大利足球甲级联赛',
             'Ligue 1': '法国足球甲级联赛'
         };
+// 核心球队汉化字典 (你可以根据需要随时在这里添加新球队)
+const teamMap = {
+    // 英超
+    'Arsenal FC': '阿森纳', 'Aston Villa FC': '阿斯顿维拉', 'Chelsea FC': '切尔西',
+    'Liverpool FC': '利物浦', 'Manchester City FC': '曼城', 'Manchester United FC': '曼联',
+    'Tottenham Hotspur FC': '热刺', 'Newcastle United FC': '纽卡斯尔联',
+    
+    // 西甲
+    'Real Madrid CF': '皇家马德里', 'FC Barcelona': '巴塞罗那', 'Club Atlético de Madrid': '马德里竞技',
+    'Girona FC': '赫罗纳', 'Real Sociedad de Fútbol': '皇家社会',
+    
+    // 德甲
+    'FC Bayern München': '拜仁慕尼黑', 'Bayer 04 Leverkusen': '勒沃库森', 'Borussia Dortmund': '多特蒙德',
+    'RB Leipzig': 'RB莱比锡',
+    
+    // 意甲
+    'Inter Nazionale': '国际米兰', 'AC Milan': 'AC米兰', 'Juventus FC': '尤文图斯',
+    'AS Roma': '罗马', 'SSC Napoli': '那不勒斯',
+    
+    // 法甲
+    'Paris Saint-Germain FC': '巴黎圣日耳曼', 'Olympique de Marseille': '马赛', 'AS Monaco FC': '摩纳哥'
+};
 
+// 翻译函数：如果字典里有就换成中文，没有就用原名
+function translate(name) {
+    return teamMap[name] || name;
+}
         async function fetchFixtures() {
             const container = document.getElementById('fixtureList');
             try {
@@ -93,14 +119,15 @@
                 if (data.matches && data.matches.length > 0) {
                     container.innerHTML = "";
                     data.matches.forEach(match => {
-                        const f = {
-                            id: match.id,
-                            league: leagueMap[match.competition.name] || match.competition.name,
-                            date: new Date(match.utcDate).toLocaleDateString('zh-CN'),
-                            time: new Date(match.utcDate).toLocaleTimeString('zh-CN', {hour: '2-digit', minute:'2-digit'}),
-                            home: match.homeTeam.name,
-                            away: match.awayTeam.name
-                        };
+                       // 找到这一段并修改：
+const f = {
+    id: match.id,
+    league: leagueMap[match.competition.name] || match.competition.name,
+    date: new Date(match.utcDate).toLocaleDateString('zh-CN'),
+    time: new Date(match.utcDate).toLocaleTimeString('zh-CN', {hour: '2-digit', minute:'2-digit'}),
+    home: translate(match.homeTeam.name), // 使用翻译函数
+    away: translate(match.awayTeam.name)  // 使用翻译函数
+};
                         renderCard(f);
                     });
                 } else {
@@ -154,3 +181,4 @@
     </script>
 </body>
 </html>
+
