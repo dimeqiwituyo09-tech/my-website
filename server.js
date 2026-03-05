@@ -4,29 +4,44 @@ const path = require('path');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// 记得在 Railway Variables 里设置 ODDS_API_KEY
-const API_KEY = process.env.ODDS_API_KEY; 
+// 请填入你在 the-odds-api.com 申请的 Key
+const API_KEY = process.env.ODDS_API_KEY || '这里填入你的32位API_KEY'; 
 
 app.use(express.static(path.join(__dirname)));
 
+// 汉化辅助：将 API 的联赛 ID 映射为中文
+const leagueMapping = {
+    'soccer_epl': '英超',
+    'soccer_spain_la_liga': '西甲',
+    'soccer_italy_serie_a': '意甲',
+    'soccer_germany_bundesliga': '德甲',
+    'soccer_france_ligue_1': '法甲'
+};
+
 app.get('/api/data', async (req, res) => {
-    if (!API_KEY) {
-        return res.status(500).json({ error: '环境变量中未找到 API_KEY' });
-    }
     try {
-        // 直接获取英超赔率，这个接口自带赛程信息
-        const response = await axios.get(`https://api.the-odds-api.com/v4/sports/soccer_epl/odds/`, {
+        // 同时获取五大联赛的数据
+        const leagues = Object.keys(leagueMapping).join(',');
+        const response = await axios.get(`https://api.the-odds-api.com/v4/sports/soccer/odds/`, {
             params: {
                 apiKey: API_KEY,
-                regions: 'eu',
-                markets: 'h2h',
-                bookmakers: 'pinnacle,williamhill'
+                regions: 'eu', // 欧洲区
+                markets: 'h2h', // 胜平负
+                bookmakers: 'williamhill,pinnacle', // 锁定威廉和平博
+                dateFormat: 'iso'
             }
         });
-        res.json(response.data);
+
+        // 过滤：只保留五大联赛的数据
+        const filteredData = response.data.filter(match => 
+            Object.keys(leagueMapping).includes(match.sport_key)
+        );
+
+        res.json(filteredData);
     } catch (error) {
-        res.status(500).json({ error: '接口访问受限', detail: error.message });
+        console.error('API Error:', error.message);
+        res.status(500).json({ error: '数据抓取失败', detail: error.message });
     }
 });
 
-app.listen(PORT, () => console.log('服务正常启动'));
+app.listen(PORT, () => console.log(`量子终端已在端口 ${PORT} 启动`));
