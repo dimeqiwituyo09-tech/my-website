@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quantum League 实时量化监控终端</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- 
+    <!-- Design Intent: 
+         - A dark-themed high-frequency trading interface.
+         - Left: Live fixture stream for the next 2 weeks across Top 5 Leagues.
+         - Right: Real-time Fitting & Prediction analysis for the selected match.
+         - Top: Global Market Sentiment Gauges.
+    -->
+    -->
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap');
+        body { font-family: 'Inter', sans-serif; background-color: #050505; color: #e2e8f0; }
+        .mono { font-family: 'JetBrains Mono', monospace; }
+        .glass-card { background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.1); }
+        .active-league { border-bottom: 2px solid #38bdf8; color: #38bdf8; }
+        .glow-green { box-shadow: 0 0 15px rgba(34, 197, 94, 0.4); }
+        .scroll-v::-webkit-scrollbar { width: 4px; }
+        .scroll-v::-webkit-scrollbar-thumb { background: #334155; border-radius: 10px; }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col overflow-hidden">
+
+    <!-- 顶部状态栏 -->
+    <header class="h-16 border-b border-slate-800 flex items-center justify-between px-6 bg-black/50">
+        <div class="flex items-center gap-4">
+            <div class="bg-sky-500 text-black px-2 py-1 rounded font-black text-sm italic">QUANTUM LIVE</div>
+            <div class="h-4 w-[1px] bg-slate-700"></div>
+            <div class="text-xs text-slate-400">系统时间: <span id="clock" class="mono">2026-03-05 17:41:22</span></div>
+        </div>
+        <div class="flex gap-8 items-center">
+            <div class="flex gap-2 items-center">
+                <span class="text-[10px] text-slate-500 uppercase">数据源响应</span>
+                <span class="text-xs text-green-400 mono">14ms</span>
+            </div>
+            <div class="flex gap-2 items-center">
+                <span class="text-[10px] text-slate-500 uppercase">当前计算负荷</span>
+                <div class="w-16 h-1 bg-slate-800 rounded-full">
+                    <div class="w-1/3 h-full bg-sky-500 rounded-full"></div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main class="flex-1 flex overflow-hidden">
+        
+        <!-- 左侧：两周赛程流 (2026.03.05 - 03.19) -->
+        <aside class="w-96 border-r border-slate-800 flex flex-col bg-slate-900/20">
+            <div class="p-4 border-b border-slate-800">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="font-bold text-sm uppercase tracking-widest text-slate-400">未来14天赛程</h2>
+                    <select id="leagueFilter" class="bg-slate-800 text-[10px] border-none rounded px-2 py-1 outline-none">
+                        <option value="ALL">全部联赛</option>
+                        <option value="EPL">英超</option>
+                        <option value="LALIGA">西甲</option>
+                        <option value="SERIEA">意甲</option>
+                        <option value="BUNDES">德甲</option>
+                        <option value="LIGUE1">法甲</option>
+                    </select>
+                </div>
+                <div class="flex gap-2 overflow-x-auto pb-2 scroll-v text-[10px] font-bold text-slate-500">
+                    <button class="px-3 py-1 bg-slate-800 rounded-full whitespace-nowrap active-league">今日 (03-05)</button>
+                    <button class="px-3 py-1 hover:text-slate-300 whitespace-nowrap">本周末</button>
+                    <button class="px-3 py-1 hover:text-slate-300 whitespace-nowrap">下周</button>
+                </div>
+            </div>
+
+            <div class="flex-1 overflow-y-auto scroll-v p-2 space-y-2" id="fixtureList">
+                <!-- Fixtures will be injected here -->
+            </div>
+        </aside>
+
+        <!-- 右侧：量化分析工作区 -->
+        <section class="flex-1 p-6 overflow-y-auto scroll-v bg-black">
+            
+            <div id="welcomeMessage" class="h-full flex flex-center items-center justify-center text-slate-600 flex-col gap-4">
+                <div class="w-16 h-16 border-2 border-slate-800 rounded-full flex items-center justify-center animate-pulse">
+                    <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
+                </div>
+                <p class="text-sm font-medium">请从左侧赛程列表选择比赛以激活量化拟合引擎</p>
+            </div>
+
+            <div id="analysisDashboard" class="hidden space-y-6">
+                <!-- 头部：动态对阵 -->
+                <div class="flex justify-between items-end">
+                    <div>
+                        <div id="anaLeague" class="text-xs font-bold text-sky-400 mb-1">英超第27轮</div>
+                        <h2 id="anaTeams" class="text-4xl font-black italic">TEAM A vs TEAM B</h2>
+                        <p id="anaTime" class="text-slate-500 text-sm mt-2">开赛时间: 2026-03-08 23:30</p>
+                    </div>
+                    <div class="text-right">
+                        <div class="text-xs text-slate-500 mb-1 uppercase">当前拟合散度指数 (D-Index)</div>
+                        <div id="anaDivIdx" class="text-5xl font-mono font-black text-emerald-400">0.00</div>
+                    </div>
+                </div>
+
+                <!-- 中部：拟合图表 -->
+                <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
+                    <div class="lg:col-span-3 glass-card p-6 rounded-3xl">
+                        <div class="flex justify-between items-center mb-6">
+                            <h3 class="font-bold text-sm flex items-center gap-2">
+                                <span class="w-2 h-2 rounded-full bg-sky-500"></span> 赔率拟合路径分析 (实时)
+                            </h3>
+                            <div class="flex gap-4 text-[10px]">
+                                <div class="flex items-center gap-1"><span class="w-3 h-0.5 bg-slate-500"></span> 威廉希尔</div>
+                                <div class="flex items-center gap-1"><span class="w-3 h-0.5 bg-emerald-500"></span> 平博 (Smart Money)</div>
+                            </div>
+                        </div>
+                        <div style="height: 400px;">
+                            <canvas id="liveFittingChart"></canvas>
+                        </div>
+                    </div>
+                    
+                    <div class="space-y-6">
+                        <div class="glass-card p-5 rounded-3xl">
+                            <h4 class="text-xs font-bold text-slate-500 mb-4 uppercase">预测信心度</h4>
+                            <div class="relative h-32 w-32 mx-auto">
+                                <canvas id="confidenceGauge"></canvas>
+                                <div class="absolute inset-0 flex items-center justify-center font-black text-2xl" id="confValue">--%</div>
+                            </div>
+                        </div>
+                        <div class="glass-card p-5 rounded-3xl">
+                            <h4 class="text-xs font-bold text-slate-500 mb-4 uppercase">拟合洞察</h4>
+                            <div id="anaInsight" class="text-xs leading-relaxed text-slate-300">
+                                正在计算数据偏离度...
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 底部：分项数据 -->
+                <div class="grid grid-cols-3 gap-6">
+                    <div class="bg-slate-900/50 p-4 rounded-2xl border border-slate-800">
+                        <div class="text-[10px] text-slate-500 uppercase mb-2">初始拟合概率</div>
+                        <div class="flex justify-between text-sm font-mono">
+                            <span>主胜: 45.2%</span>
+                            <span>平: 26.1%</span>
+                            <span>客: 28.7%</span>
+                        </div>
+                    </div>
+                    <div class="bg-slate-900/50 p-4 rounded-2xl border border-slate-800">
+                        <div class="text-[10px] text-slate-500 uppercase mb-2">临场拟合偏差</div>
+                        <div id="biasIndicator" class="text-sm font-bold text-emerald-400">+ 12.4% (向主胜倾斜)</div>
+                    </div>
+                    <div class="bg-slate-900/50 p-4 rounded-2xl border border-slate-800">
+                        <div class="text-[10px] text-slate-500 uppercase mb-2">模型建议方向</div>
+                        <div id="modelSignal" class="text-sm font-black text-sky-400">---</div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <script>
+        // --- 核心数据库：两周内的重要赛程 (2026.03.05 - 03.19) ---
+        const fixtures = [
+            { id: 1001, league: "英超", date: "2026-03-07", time: "20:30", home: "曼城", away: "利物浦", importance: "H" },
+            { id: 1002, league: "西甲", date: "2026-03-07", time: "23:15", home: "皇马", away: "贝蒂斯", importance: "M" },
+            { id: 1003, league: "意甲", date: "2026-03-08", time: "03:45", home: "AC米兰", away: "国际米兰", importance: "H" },
+            { id: 1004, league: "德甲", date: "2026-03-08", time: "22:30", home: "拜仁", away: "勒沃库森", importance: "H" },
+            { id: 1005, league: "法甲", date: "2026-03-09", time: "03:00", home: "马赛", away: "巴黎圣日耳曼", importance: "M" },
+            { id: 1006, league: "英超", date: "2026-03-14", time: "23:00", home: "阿森纳", away: "切尔西", importance: "H" },
+            { id: 1007, league: "西甲", date: "2026-03-15", time: "04:00", home: "巴萨", away: "马竞", importance: "H" },
+            { id: 1008, league: "德甲", date: "2026-03-15", time: "22:30", home: "多特", away: "莱比锡", importance: "M" },
+            { id: 1009, league: "意甲", date: "2026-03-16", time: "03:45", home: "尤文图斯", away: "那不勒斯", importance: "H" },
+            { id: 1010, league: "英超", date: "2026-03-18", time: "04:00", home: "热刺", away: "曼联", importance: "H" }
+        ];
+
+        let fittingChart, gaugeChart;
+        const labels = ["初盘", "-72h", "-48h", "-24h", "-12h", "-6h", "-2h", "实时"];
+
+        // --- 初始化渲染 ---
+        function init() {
+            renderFixtures();
+            updateClock();
+            setInterval(updateClock, 1000);
+        }
+
+        function updateClock() {
+            const now = new Date();
+            document.getElementById('clock').textContent = now.toISOString().replace('T', ' ').split('.')[0];
+        }
+
+        function renderFixtures() {
+            const container = document.getElementById('fixtureList');
+            fixtures.forEach(f => {
+                const card = document.createElement('div');
+                card.className = "p-3 rounded-xl bg-slate-800/40 border border-slate-700/50 hover:border-sky-500/50 cursor-pointer transition-all";
+                card.onclick = () => selectMatch(f);
+                card.innerHTML = `
+                    <div class="flex justify-between items-center mb-2">
+                        <span class="text-[9px] font-bold bg-slate-700 px-1.5 py-0.5 rounded text-sky-400">${f.league}</span>
+                        <span class="text-[9px] text-slate-500 font-mono">${f.date} ${f.time}</span>
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <span class="text-xs font-bold">${f.home}</span>
+                        <span class="text-[10px] text-slate-600 font-black italic">VS</span>
+                        <span class="text-xs font-bold text-right">${f.away}</span>
+                    </div>
+                    ${f.importance === 'H' ? '<div class="mt-2 h-1 w-full bg-sky-500/20 rounded-full overflow-hidden"><div class="h-full w-2/3 bg-sky-500"></div></div>' : ''}
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        function selectMatch(f) {
+            document.getElementById('welcomeMessage').classList.add('hidden');
+            document.getElementById('analysisDashboard').classList.remove('hidden');
+            
+            document.getElementById('anaTeams').textContent = `${f.home} vs ${f.away}`;
+            document.getElementById('anaLeague').textContent = `${f.league} | 模拟量化预测序列`;
+            document.getElementById('anaTime').textContent = `预计开赛: ${f.date} ${f.time}`;
+
+            // 生成随机模拟拟合数据
+            const baseOdds = 1.8 + Math.random();
+            const whData = Array.from({length: 8}, (_, i) => baseOdds + Math.sin(i*0.5)*0.1 + (Math.random()*0.05));
+            const pinData = whData.map((v, i) => v - (i * 0.04) + (Math.random()*0.02));
+            
+            const divIdx = (whData[7] - pinData[7]).toFixed(2);
+            document.getElementById('anaDivIdx').textContent = divIdx;
+            
+            updateCharts(whData, pinData);
+            updateLogic(divIdx, f);
+        }
+
+        function updateCharts(wh, pin) {
+            // 1. Line Chart
+            if (fittingChart) fittingChart.destroy();
+            const ctx = document.getElementById('liveFittingChart').getContext('2d');
+            fittingChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        {
+                            label: '威廉希尔 (标尺)',
+                            data: wh,
+                            borderColor: '#64748b',
+                            borderWidth: 2,
+                            borderDash: [4, 4],
+                            pointRadius: 0,
+                            tension: 0.4
+                        },
+                        {
+                            label: '平博 (资金拟合)',
+                            data: pin,
+                            borderColor: '#10b981',
+                            borderWidth: 4,
+                            pointRadius: 4,
+                            pointBackgroundColor: '#10b981',
+                            fill: true,
+                            backgroundColor: 'rgba(16, 185, 129, 0.05)',
+                            tension: 0.4
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        y: { grid: { color: '#1e293b' }, ticks: { color: '#64748b', font: { size: 10 } } },
+                        x: { grid: { display: false }, ticks: { color: '#64748b', font: { size: 10 } } }
+                    }
+                }
+            });
+
+            // 2. Gauge Chart (Confidence)
+            if (gaugeChart) gaugeChart.destroy();
+            const gCtx = document.getElementById('confidenceGauge').getContext('2d');
+            const confValue = Math.floor(Math.random() * 30 + 65);
+            document.getElementById('confValue').textContent = `${confValue}%`;
+            gaugeChart = new Chart(gCtx, {
+                type: 'doughnut',
+                data: {
+                    datasets: [{
+                        data: [confValue, 100 - confValue],
+                        backgroundColor: ['#38bdf8', '#1e293b'],
+                        borderWidth: 0,
+                        circumference: 180,
+                        rotation: 270
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    cutout: '85%',
+                    plugins: { legend: { display: false } }
+                }
+            });
+        }
+
+        function updateLogic(div, f) {
+            const insight = document.getElementById('anaInsight');
+            const signal = document.getElementById('modelSignal');
+            const bias = document.getElementById('biasIndicator');
+
+            if (div > 0.1) {
+                insight.innerHTML = `检测到 <span class="text-emerald-400 font-bold">正向显著散度</span>。平博拟合曲线明显低于威廉标尺，暗示大宗资金正在布局【${f.home}】方向。建议关注该场首选。`;
+                signal.textContent = `建议方向: ${f.home}`;
+                bias.textContent = `+ ${(div*100).toFixed(1)}% (资金流入中)`;
+                bias.className = "text-sm font-bold text-emerald-400";
+            } else {
+                insight.innerHTML = "当前拟合散度处于正常波动区间。市场观望情绪较重，建议等待临场 2 小时的拟合斜率突破信号。";
+                signal.textContent = "保持观望";
+                bias.textContent = "无显著偏离";
+                bias.className = "text-sm font-bold text-slate-500";
+            }
+        }
+
+        window.onload = init;
+    </script>
+</body>
+</html>
