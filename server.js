@@ -4,7 +4,7 @@ const path = require('path');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-const ODDS_API_KEY = 'fcc47361ad5052aa8d4313832e628172'; 
+const ODDS_API_KEY = process.env.ODDS_API_KEY;
 
 app.use(express.static(path.join(__dirname)));
 
@@ -26,3 +26,4 @@ app.get('/api/odds', async (req, res) => {
 });
 
 app.listen(PORT, () => console.log(`量化终端 2.0 启动`));
+
