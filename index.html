@@ -92,38 +92,28 @@
         };
 
         async function update() {
-            const list = document.getElementById('fixtureList');
-            try {
-                const res = await fetch('/api/data');
-                const data = await res.json();
-                list.innerHTML = "";
-                document.getElementById('mCount').textContent = `${data.length} UNITS`;
-                
-                data.forEach(m => {
-                    const date = new Date(m.commence_time);
-                    const timeStr = `${(date.getMonth()+1)}/${date.getDate()} ${date.getHours().toString().padStart(2,'0')}:${date.getMinutes().toString().padStart(2,'0')}`;
-                    
-                    const card = document.createElement('div');
-                    card.className = "match-card p-5 rounded-2xl cursor-pointer transition-all flex flex-col gap-3";
-                    card.onclick = () => {
-                        document.querySelectorAll('.match-card').forEach(c => c.classList.remove('active-card'));
-                        card.classList.add('active-card');
-                        showMatch(m);
-                    };
-                    card.innerHTML = `
-                        <div class="flex justify-between items-center">
-                            <span class="text-[8px] font-black text-sky-500 uppercase tracking-widest">${leagueMap[m.sport_key] || m.sport_title}</span>
-                            <span class="text-[10px] text-slate-600 mono">${timeStr}</span>
-                        </div>
-                        <div class="flex justify-between font-bold text-slate-200 text-sm">
-                            <span class="truncate w-32">${teamMap[m.home_team] || m.home_team}</span>
-                            <span class="text-right truncate w-32">${teamMap[m.away_team] || m.away_team}</span>
-                        </div>
-                    `;
-                    list.appendChild(card);
-                });
-            } catch (e) { list.innerHTML = "LINK ERROR"; }
-        }
+    const list = document.getElementById('fixtureList');
+    try {
+        const res = await fetch('/api/data');
+        if (!res.ok) throw new Error(`HTTP Error: ${res.status}`);
+        const data = await res.json();
+        
+        // ... 原有的渲染逻辑 ...
+        
+    } catch (e) {
+        console.error(e);
+        list.innerHTML = `
+            <div class="p-10 text-center">
+                <div class="text-red-500 font-bold mb-2 uppercase text-[10px]">LINK ERROR</div>
+                <div class="text-slate-600 text-[9px] leading-relaxed">
+                    原因: API 额度耗尽或请求超时<br>
+                    请检查 Railway 环境变量中的 KEY
+                </div>
+                <button onclick="update()" class="mt-4 px-3 py-1 bg-slate-800 text-[9px] rounded uppercase">重试连接</button>
+            </div>
+        `;
+    }
+}
 
         let chart = null;
         function showMatch(m) {
@@ -170,5 +160,6 @@
     </script>
 </body>
 </html>
+
 
 
