@@ -13,7 +13,7 @@ const BIG_FIVE = [
 
 let cacheData = null;
 let lastFetchTime = 0;
-const CACHE_DURATION = 15 * 60 * 1000; // 15分钟缓存以节省额度
+const CACHE_DURATION = 15 * 60 * 1000; 
 
 app.use(express.static(path.join(__dirname)));
 
@@ -22,9 +22,6 @@ app.get('/api/data', async (req, res) => {
     if (cacheData && (now - lastFetchTime < CACHE_DURATION)) return res.json(cacheData);
 
     try {
-        console.log('📡 启动多路并行抓取...');
-        
-        // 使用 allSettled 容错机制：即使西甲挂了，英超也要显示
         const results = await Promise.allSettled(
             BIG_FIVE.map(league => 
                 axios.get(`https://api.the-odds-api.com/v4/sports/${league}/odds/`, {
@@ -35,23 +32,18 @@ app.get('/api/data', async (req, res) => {
         );
 
         let combined = [];
-        let errors = [];
+        const fortyEightHoursLater = now + (48 * 60 * 60 * 1000); // 计算48小时后的时间点
 
-        results.forEach((result, index) => {
+        results.forEach((result) => {
             if (result.status === 'fulfilled') {
-                combined = combined.concat(result.value.data);
-            } else {
-                errors.push(`${BIG_FIVE[index]}: ${result.reason.message}`);
+                const filteredLeagues = result.value.data.filter(m => {
+                    const matchTime = new Date(m.commence_time).getTime();
+                    // 只保留：还没开始 且 在未来48小时内的比赛
+                    return matchTime > now && matchTime < fortyEightHoursLater;
+                });
+                combined = combined.concat(filteredLeagues);
             }
         });
-
-        // 如果全部失败，向前端发送具体错误
-        if (combined.length === 0) {
-            return res.status(500).json({ 
-                error: 'SERVER_GATEWAY_ERROR', 
-                detail: errors.join(' | ') 
-            });
-        }
 
         combined.sort((a, b) => new Date(a.commence_time) - new Date(b.commence_time));
         
@@ -60,8 +52,8 @@ app.get('/api/data', async (req, res) => {
         res.json(combined);
 
     } catch (error) {
-        res.status(500).json({ error: 'SYSTEM_CRASH', detail: error.message });
+        res.status(500).json({ error: 'FETCH_ERROR', detail: error.message });
     }
 });
 
-app.listen(PORT, () => console.log(`量子探测器 V2.9 已启动`));
+app.listen(PORT, () => console.log(`精准探测器 V3.0 已启动`));
