@@ -86,47 +86,46 @@
             'soccer_france_ligue_1': '法甲联赛', 'soccer_uefa_champs_league': '欧冠联赛'
         };
 
-        async function fetchFixtures() {
-            const container = document.getElementById('fixtureList');
-            try {
-                const res = await fetch('/api/data');
-                const data = await res.json();
+      async function fetchFixtures() {
+    const container = document.getElementById('fixtureList');
+    try {
+        const res = await fetch('/api/data');
+        const data = await res.json();
+        
+        if (data && data.length > 0) {
+            container.innerHTML = "";
+            document.getElementById('matchCount').textContent = `${data.length} 序列`;
+            
+            data.forEach((m) => {
+                const sKey = m.sport_key.toLowerCase();
+                const isBig = ['soccer_epl', 'soccer_spain_la_liga', 'soccer_germany_bundesliga', 'soccer_italy_serie_a', 'soccer_france_ligue_1', 'soccer_uefa_champs_league'].includes(sKey);
                 
-                if (data && data.length > 0) {
-                    container.innerHTML = "";
-                    document.getElementById('matchCount').textContent = `${data.length} UNITS`;
-                    
-                    data.forEach((m, i) => {
-                        const sKey = m.sport_key.toLowerCase();
-                        const sTitle = m.sport_title.toLowerCase();
-                        
-                        // 加强版识别逻辑
-                        const isBig = Object.keys(leagueMap).includes(sKey) || 
-                                     sTitle.includes('premier') || sTitle.includes('liga') || 
-                                     sTitle.includes('bundesliga') || sTitle.includes('serie a');
+                const startTime = new Date(m.commence_time);
+                // 格式化日期：显示 "03/07 03:00"
+                const timeStr = `${(startTime.getMonth()+1).toString().padStart(2,'0')}/${startTime.getDate().toString().padStart(2,'0')} ${startTime.getHours().toString().padStart(2,'0')}:${startTime.getMinutes().toString().padStart(2,'0')}`;
 
-                        const card = document.createElement('div');
-                        card.className = `p-4 rounded-xl border transition-all cursor-pointer hover:bg-slate-800/40 ${isBig ? 'glass big-five-glow' : 'border-slate-800/40 opacity-50'}`;
-                        
-                        card.onclick = () => selectMatch(m);
-                        card.innerHTML = `
-                            <div class="flex justify-between items-center mb-2">
-                                <span class="text-[9px] font-black ${isBig ? 'text-sky-500' : 'text-slate-600'} uppercase tracking-widest">${leagueMap[m.sport_key] || m.sport_title}</span>
-                                <span class="text-[9px] text-slate-500 mono">${new Date(m.commence_time).toLocaleDateString('zh-CN', {month:'numeric',day:'numeric'})} ${new Date(m.commence_time).toLocaleTimeString('zh-CN', {hour:'2-digit',minute:'2-digit'})}</span>
-                            </div>
-                            <div class="flex justify-between text-sm font-bold text-slate-200">
-                                <span>${m.home_team}</span>
-                                <span class="text-slate-700 px-2 font-black text-[10px]">VS</span>
-                                <span class="text-right">${m.away_team}</span>
-                            </div>
-                        `;
-                        container.appendChild(card);
-                    });
-                }
-            } catch (e) {
-                console.error("Link Error");
-            }
+                const card = document.createElement('div');
+                card.className = `p-4 rounded-xl border transition-all cursor-pointer hover:bg-slate-800/60 ${isBig ? 'border-sky-500/50 bg-slate-900/40' : 'border-slate-800 opacity-40'}`;
+                
+                card.onclick = () => selectMatch(m);
+                card.innerHTML = `
+                    <div class="flex justify-between items-center mb-2">
+                        <span class="text-[9px] font-black ${isBig ? 'text-sky-400' : 'text-slate-500'} uppercase tracking-widest">${m.sport_title}</span>
+                        <span class="text-[10px] text-slate-400 mono font-bold">${timeStr}</span>
+                    </div>
+                    <div class="flex justify-between text-sm font-bold text-slate-100">
+                        <span class="truncate w-24">${m.home_team}</span>
+                        <span class="text-slate-700 font-black text-[10px] mx-2">VS</span>
+                        <span class="truncate w-24 text-right">${m.away_team}</span>
+                    </div>
+                `;
+                container.appendChild(card);
+            });
         }
+    } catch (e) {
+        console.error("加载失败");
+    }
+}
 
         let chartObj = null;
 
@@ -179,3 +178,4 @@
     </script>
 </body>
 </html>
+
