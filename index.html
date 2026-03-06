@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Quantum League 量化监控终端</title>
+    <title>Quantum League 量化终端</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
@@ -19,21 +19,22 @@
 
     <header class="h-20 border-b border-slate-800 flex items-center justify-between px-8 bg-black/50">
         <div class="flex items-center gap-6">
-            <div class="bg-sky-500 text-black px-3 py-1.5 rounded font-black text-base italic tracking-tighter">QUANTUM ANALYST 2.2</div>
+            <div class="bg-sky-500 text-black px-3 py-1.5 rounded font-black text-base italic tracking-tighter">QUANTUM ANALYST V2.3</div>
             <div class="text-sm text-slate-400">系统时间: <span id="clock" class="mono text-sky-400">--:--:--</span></div>
         </div>
-        <div class="flex gap-4 items-center bg-slate-900/50 px-4 py-2 rounded-full border border-slate-800">
-            <span class="text-xs font-bold text-green-400 uppercase tracking-widest">● 数据流已接入 (5min 缓存)</span>
+        <div class="text-xs font-bold text-green-400 bg-green-400/10 px-4 py-2 rounded-full border border-green-400/20">
+            ● 探测模式已激活：所有足球赛事实时接入
         </div>
     </header>
 
     <main class="flex-1 flex overflow-hidden">
         <aside class="w-[450px] border-r border-slate-800 flex flex-col bg-slate-900/20">
-            <div class="p-6 border-b border-slate-800">
-                <h2 class="font-bold text-lg text-sky-500 uppercase tracking-widest">五大联赛核心监控</h2>
+            <div class="p-6 border-b border-slate-800 flex justify-between items-center">
+                <h2 class="font-bold text-lg text-sky-500 uppercase tracking-widest">全量赛事探测</h2>
+                <span class="text-[10px] text-slate-500 mono">Beijing Time</span>
             </div>
             <div class="flex-1 overflow-y-auto scroll-v p-4 space-y-4" id="fixtureList">
-                <div class="text-center py-10 text-slate-500 animate-pulse">正在获取最新行情数据...</div>
+                <div class="text-center py-10 text-slate-500 animate-pulse">正在扫频...</div>
             </div>
         </aside>
 
@@ -42,7 +43,7 @@
                 <div class="w-24 h-24 border-2 border-slate-800 rounded-full flex items-center justify-center animate-pulse">
                     <svg class="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path></svg>
                 </div>
-                <p class="text-lg font-medium tracking-widest">请选择比赛以激活威廉/平博量化分析</p>
+                <p class="text-lg font-medium tracking-widest">请选择左侧比赛调动量化数据</p>
             </div>
 
             <div id="analysisDashboard" class="hidden space-y-8">
@@ -60,13 +61,13 @@
 
                 <div class="grid grid-cols-12 gap-8">
                     <div class="col-span-7 glass-card p-8 rounded-[2rem]">
-                        <h3 class="font-bold text-base mb-6 flex items-center gap-2 text-slate-400">资金拟合路径 (威廉 vs 平博)</h3>
+                        <h3 class="font-bold text-base mb-6 text-slate-400">价格波动拟合 (威廉 vs 平博)</h3>
                         <div style="height: 350px;"><canvas id="liveFittingChart"></canvas></div>
                     </div>
                     <div class="col-span-5 space-y-8">
                         <div class="glass-card p-8 rounded-[2rem] bg-sky-500/5 border-sky-500/20">
-                            <h4 class="text-sm font-bold text-sky-500 mb-4 uppercase tracking-widest">实时量化洞察</h4>
-                            <div id="anaInsight" class="text-lg leading-relaxed text-slate-300 font-medium tracking-wide">---</div>
+                            <h4 class="text-sm font-bold text-sky-500 mb-4 uppercase tracking-widest">实时数据诊断</h4>
+                            <div id="anaInsight" class="text-lg leading-relaxed text-slate-300 font-medium">---</div>
                         </div>
                     </div>
                 </div>
@@ -76,26 +77,31 @@
 
     <script>
         const teamMap = {
+            // 英超
             'Arsenal': '阿森纳', 'Aston Villa': '阿斯顿维拉', 'Bournemouth': '伯恩茅斯', 'Brentford': '布伦特福德',
             'Brighton & Hove Albion': '布莱顿', 'Chelsea': '切尔西', 'Crystal Palace': '水晶宫', 'Everton': '埃弗顿',
             'Fulham': '富勒姆', 'Ipswich Town': '伊普斯维奇', 'Leicester City': '莱斯特城', 'Liverpool': '利物浦',
             'Manchester City': '曼城', 'Manchester United': '曼联', 'Newcastle United': '纽卡斯尔联', 'Nottingham Forest': '诺丁汉森林',
             'Southampton': '南安普顿', 'Tottenham Hotspur': '热刺', 'West Ham United': '西汉姆联', 'Wolverhampton Wanderers': '狼队',
+            // 西甲
             'Alavés': '阿拉维斯', 'Athletic Club': '毕尔巴鄂竞技', 'Atlético Madrid': '马德里竞技', 'Barcelona': '巴塞罗那',
             'Celta Vigo': '塞尔塔', 'Espanyol': '西班牙人', 'Getafe': '赫塔费', 'Girona': '赫罗纳',
             'Las Palmas': '拉斯帕尔马斯', 'Leganés': '莱加内斯', 'Mallorca': '马洛卡', 'Osasuna': '奥萨苏纳',
             'Rayo Vallecano': '巴列卡诺', 'Real Betis': '皇家贝蒂斯', 'Real Madrid': '皇家马德里', 'Real Sociedad': '皇家社会',
             'Sevilla': '塞维利亚', 'Valencia': '瓦伦西亚', 'Valladolid': '巴拉多利德', 'Villarreal': '比利亚雷亚尔',
+            // 德甲
             'Augsburg': '奥格斯堡', 'Bayer Leverkusen': '勒沃库森', 'Bayern Munich': '拜仁慕尼黑', 'Bochum': '波鸿',
             'Borussia Dortmund': '多特蒙德', 'Borussia Mönchengladbach': '门兴', 'Eintracht Frankfurt': '法兰克福', 'Freiburg': '弗赖堡',
             'Heidenheim': '海登海姆', 'Hoffenheim': '霍芬海姆', 'Holstein Kiel': '基尔', 'Mainz 05': '美因茨',
             'RB Leipzig': 'RB莱比锡', 'St. Pauli': '圣保利', 'Stuttgart': '斯图加特', 'Union Berlin': '柏林联合',
-            'Werder Bremen': '云达不来梅', 'Wolfsburg': '沃尔夫斯堡',
+            'Werder Bremen': '云达不来梅', 'Wolfsburg': '沃尔福斯堡',
+            // 意甲
             'Atalanta': '亚特兰大', 'Bologna': '博洛尼亚', 'Cagliari': '卡利亚里', 'Como': '科莫',
             'Empoli': '恩波利', 'Fiorentina': '佛罗伦萨', 'Genoa': '热那亚', 'Inter Milan': '国际米兰',
             'Juventus': '尤文图斯', 'Lazio': '拉齐奥', 'Lecce': '莱切', 'Milan': 'AC米兰',
             'Monza': '蒙扎', 'Napoli': '那不勒斯', 'Parma': '帕尔马', 'Roma': '罗马',
             'Torino': '都灵', 'Udinese': '乌迪内斯', 'Venezia': '威尼斯', 'Verona': '维罗纳',
+            // 法甲
             'Angers': '昂热', 'Auxerre': '欧塞尔', 'Brest': '布雷斯特', 'Le Havre': '勒阿弗尔',
             'Lens': '朗斯', 'Lille': '里尔', 'Lyon': '里昂', 'Marseille': '马赛',
             'Monaco': '摩纳哥', 'Montpellier': '蒙彼利埃', 'Nantes': '南特', 'Nice': '尼斯',
@@ -104,54 +110,65 @@
         };
 
         const leagueMap = {
-            'soccer_epl': '英超联赛', 'soccer_spain_la_liga': '西班牙西甲',
-            'soccer_germany_bundesliga': '德国德甲', 'soccer_italy_serie_a': '意大利意甲',
-            'soccer_france_ligue_1': '法国法甲', 'soccer_uefa_champs_league': '欧洲冠军联赛'
+            'soccer_epl': '英超联赛', 'soccer_spain_la_liga': '西班牙甲级',
+            'soccer_germany_bundesliga': '德国甲级', 'soccer_italy_serie_a': '意大利甲级',
+            'soccer_france_ligue_1': '法国甲级', 'soccer_uefa_champs_league': '欧洲冠军杯'
         };
 
         function translate(name) { return teamMap[name] || name; }
-        let fittingChart = null;
 
         async function fetchFixtures() {
             const container = document.getElementById('fixtureList');
             try {
                 const response = await fetch('/api/data');
                 const data = await response.json();
+                
                 if (data && data.length > 0) {
                     container.innerHTML = "";
                     data.forEach(match => {
+                        const isBigFive = Object.keys(leagueMap).includes(match.sport_key);
                         const hasOdds = match.bookmakers && match.bookmakers.length > 0;
+                        
                         const card = document.createElement('div');
-                        card.className = `p-5 rounded-2xl border transition-all cursor-pointer ${hasOdds ? 'bg-slate-800/40 border-slate-700/50 hover:border-sky-500' : 'bg-slate-900/10 border-slate-800 opacity-60'}`;
-                        card.onclick = () => hasOdds ? selectMatch(match) : alert("该场比赛暂未开盘或已结束");
+                        card.className = `p-5 rounded-2xl border transition-all cursor-pointer ${isBigFive ? 'bg-slate-800/60 border-sky-500/40 shadow-lg' : 'bg-slate-900/10 border-slate-800 opacity-60'}`;
+                        
+                        card.onclick = () => hasOdds ? selectMatch(match) : alert("暂无具体报价数据");
+                        
                         card.innerHTML = `
                             <div class="flex justify-between items-center mb-2">
-                                <span class="text-[10px] font-black bg-sky-500 text-black px-2 py-0.5 rounded italic">QUANTUM LIVE</span>
+                                <span class="text-[10px] font-black ${isBigFive ? 'bg-sky-500 text-black' : 'bg-slate-700 text-slate-300'} px-2 py-0.5 rounded italic">
+                                    ${isBigFive ? 'CORE MONITOR' : 'GENERAL'}
+                                </span>
                                 <span class="text-xs text-slate-500 mono">${new Date(match.commence_time).toLocaleString('zh-CN', {month:'numeric', day:'numeric', hour:'2-digit', minute:'2-digit'})}</span>
                             </div>
-                            <div class="flex justify-between items-center mb-1">
+                            <div class="flex justify-between items-center mb-2">
                                 <span class="font-bold text-lg">${translate(match.home_team)}</span>
-                                <span class="text-[10px] text-slate-600 font-black italic">VS</span>
+                                <span class="text-[10px] text-slate-600 font-black">VS</span>
                                 <span class="font-bold text-lg text-right">${translate(match.away_team)}</span>
                             </div>
-                            <div class="text-[10px] text-slate-400 font-bold uppercase tracking-widest">${leagueMap[match.sport_key] || "顶级联赛"}</div>
+                            <div class="flex justify-between items-center mt-3 pt-2 border-t border-slate-800/50">
+                                <div class="text-[10px] text-slate-400 font-bold uppercase tracking-widest">${leagueMap[match.sport_key] || match.sport_title}</div>
+                                <div class="text-[9px] text-sky-900 font-mono">ID: ${match.sport_key}</div>
+                            </div>
                         `;
                         container.appendChild(card);
                     });
                 } else {
-                    container.innerHTML = `<div class="p-6 text-slate-500 text-center">未来 48H 暂无五大联赛赛程</div>`;
+                    container.innerHTML = `<div class="p-10 text-slate-500 text-center">API 未返回任何近期比赛</div>`;
                 }
             } catch (e) {
-                container.innerHTML = `<div class="p-6 text-red-400 text-center">数据同步异常，请刷新重试</div>`;
+                container.innerHTML = `<div class="p-10 text-red-400 text-center">连接后端代理失败</div>`;
             }
         }
+
+        let fittingChart = null;
 
         function selectMatch(match) {
             document.getElementById('welcomeMessage').classList.add('hidden');
             document.getElementById('analysisDashboard').classList.remove('hidden');
             document.getElementById('anaTeams').textContent = `${translate(match.home_team)} VS ${translate(match.away_team)}`;
-            document.getElementById('anaLeague').textContent = leagueMap[match.sport_key] || "顶级联赛";
-            document.getElementById('anaTime').textContent = `开赛时间 (北京时间): ${new Date(match.commence_time).toLocaleString('zh-CN')}`;
+            document.getElementById('anaLeague').textContent = leagueMap[match.sport_key] || match.sport_title;
+            document.getElementById('anaTime').textContent = `开赛时间: ${new Date(match.commence_time).toLocaleString('zh-CN')}`;
             
             const wh = match.bookmakers.find(b => b.key === 'williamhill')?.markets[0].outcomes[0].price || 2.0;
             const pin = match.bookmakers.find(b => b.key === 'pinnacle')?.markets[0].outcomes[0].price || 1.95;
@@ -159,10 +176,10 @@
             const div = (wh - pin).toFixed(2);
             document.getElementById('anaDivIdx').textContent = div;
             document.getElementById('anaInsight').innerHTML = `
-                大众机构 (威廉) 报价 <span class="text-sky-400 font-bold">${wh}</span>，
-                专业机构 (平博) 报价 <span class="text-emerald-400 font-bold">${pin}</span>。<br><br>
-                当前偏离度为 <span class="font-bold underline">${div}</span>。
-                ${div > 0.05 ? '⚠️ 发现显著价格偏离，建议关注专业机构后续调控。' : '✅ 市场定价趋于稳定。'}
+                威廉希尔 (WilliamHill) 报价: <span class="text-sky-400 font-bold">${wh}</span><br>
+                平博 (Pinnacle) 报价: <span class="text-emerald-400 font-bold">${pin}</span><br><br>
+                量化差值：<span class="font-bold underline">${div}</span><br>
+                <span class="text-sm text-slate-500 mt-2 block italic">提示：当 Pinnacle 价格大幅低于大众市场时，通常代表有大单流入或专业机构对赛果有更明确的预判。</span>
             `;
             updateCharts([wh + 0.1, wh + 0.05, wh], [pin + 0.15, pin + 0.08, pin]);
         }
@@ -173,10 +190,10 @@
             fittingChart = new Chart(ctx, {
                 type: 'line',
                 data: {
-                    labels: ['开盘', '即时', '最新'],
+                    labels: ['初始', '即时', '最新'],
                     datasets: [
-                        { label: '威廉 (大众)', data: whData, borderColor: '#475569', borderDash: [5, 5], tension: 0.4 },
-                        { label: '平博 (专业)', data: pinData, borderColor: '#10b981', borderWidth: 4, fill: true, backgroundColor: 'rgba(16, 185, 129, 0.05)', tension: 0.4 }
+                        { label: '威廉 (大众市场)', data: whData, borderColor: '#475569', borderDash: [5, 5], tension: 0.4 },
+                        { label: '平博 (专业机构)', data: pinData, borderColor: '#10b981', borderWidth: 4, fill: true, backgroundColor: 'rgba(16, 185, 129, 0.05)', tension: 0.4 }
                     ]
                 },
                 options: {
@@ -191,7 +208,6 @@
         window.onload = () => {
             fetchFixtures();
             setInterval(() => document.getElementById('clock').textContent = new Date().toLocaleTimeString(), 1000);
-            // 页面每5分钟自动刷新数据
             setInterval(fetchFixtures, 5 * 60 * 1000);
         };
     </script>
