@@ -6,14 +6,13 @@ const PORT = process.env.PORT || 3000;
 
 const API_KEY = process.env.ODDS_API_KEY || 'YOUR_KEY_HERE';
 
-// 强制监控的五大联赛 ID
-const TARGET_LEAGUES = [
-    'soccer_epl', 
-    'soccer_spain_la_liga', 
-    'soccer_germany_bundesliga', 
-    'soccer_italy_serie_a', 
-    'soccer_france_ligue_1',
-    'soccer_uefa_champs_league'
+// 定义五大联赛核心 ID
+const BIG_FIVE = [
+    'soccer_epl',                // 英超
+    'soccer_spain_la_liga',      // 西甲
+    'soccer_germany_bundesliga', // 德甲
+    'soccer_italy_serie_a',      // 意甲
+    'soccer_france_ligue_1'      // 法甲
 ];
 
 let cacheData = null;
@@ -24,44 +23,45 @@ app.use(express.static(path.join(__dirname)));
 
 app.get('/api/data', async (req, res) => {
     const now = Date.now();
-    if (cacheData && (now - lastFetchTime < CACHE_DURATION)) return res.json(cacheData);
+    if (cacheData && (now - lastFetchTime < CACHE_DURATION)) {
+        return res.json(cacheData);
+    }
 
     try {
-        // 策略：请求全量足球数据，但增加参数以获取更远时间的比赛
-        const response = await axios.get(`https://api.the-odds-api.com/v4/sports/soccer/odds/`, {
-            params: {
-                apiKey: API_KEY,
-                regions: 'eu',
-                markets: 'h2h',
-                bookmakers: 'williamhill,pinnacle',
-                dateFormat: 'iso',
-                // 某些 API 版本支持 commerce_time_from，这里我们通过不过滤 sport 来获取更多
-            }
+        console.log('📡 正在同步五大联赛实时数据...');
+        
+        // 并发抓取 5 个联赛，确保每个联赛的 48H 赛程都不被挤掉
+        const requests = BIG_FIVE.map(league => 
+            axios.get(`https://api.the-odds-api.com/v4/sports/${league}/odds/`, {
+                params: {
+                    apiKey: API_KEY,
+                    regions: 'eu',
+                    markets: 'h2h',
+                    bookmakers: 'williamhill,pinnacle',
+                    dateFormat: 'iso'
+                }
+            })
+        );
+
+        const responses = await Promise.all(requests);
+        let combined = [];
+        
+        responses.forEach(response => {
+            if (response.data) combined = combined.concat(response.data);
         });
 
-        let allMatches = response.data;
+        // 核心排序：按开赛时间先后排列
+        combined.sort((a, b) => new Date(a.commence_time) - new Date(b.commence_time));
 
-        // 1. 自动识别并提取五大联赛
-        const bigFive = allMatches.filter(m => TARGET_LEAGUES.includes(m.sport_key));
-        
-        // 2. 提取非五大联赛（作为补充）
-        const others = allMatches.filter(m => !TARGET_LEAGUES.includes(m.sport_key));
-
-        // 3. 核心排序：五大联赛永远排在最上面，且按开赛时间先后排序
-        bigFive.sort((a, b) => new Date(a.commence_time) - new Date(b.commence_time));
-        others.sort((a, b) => new Date(a.commence_time) - new Date(b.commence_time));
-
-        // 合并数据：五大联赛在前，其他在后
-        const finalData = [...bigFive, ...others];
-
-        cacheData = finalData;
+        cacheData = combined;
         lastFetchTime = now;
-        res.json(finalData);
+        res.json(combined);
+
     } catch (error) {
-        console.error('API请求出错:', error.message);
+        console.error('抓取失败:', error.message);
         if (cacheData) return res.json(cacheData);
-        res.status(500).json({ error: '无法获取赛程' });
+        res.status(500).json({ error: '卫星连接中断' });
     }
 });
 
-app.listen(PORT, () => console.log(`量子探测器 V2.6 已就绪`));
+app.listen(PORT, () => console.log(`量子探测器 V2.8 (五大联赛版) 已启动`));
