@@ -6,9 +6,19 @@ const PORT = process.env.PORT || 3000;
 
 const API_KEY = process.env.ODDS_API_KEY || 'YOUR_KEY_HERE';
 
+// 核心：五大联赛官方 ID 列表
+const BIG_FIVE_KEYS = [
+    'soccer_epl', 
+    'soccer_spain_la_liga', 
+    'soccer_germany_bundesliga', 
+    'soccer_italy_serie_a', 
+    'soccer_france_ligue_1',
+    'soccer_uefa_champs_league'
+];
+
 let cacheData = null;
 let lastFetchTime = 0;
-const CACHE_DURATION = 3 * 60 * 1000; // 缩短缓存到3分钟，方便调试
+const CACHE_DURATION = 5 * 60 * 1000; 
 
 app.use(express.static(path.join(__dirname)));
 
@@ -19,6 +29,7 @@ app.get('/api/data', async (req, res) => {
     }
 
     try {
+        // 请求所有足球赛
         const response = await axios.get(`https://api.the-odds-api.com/v4/sports/soccer/odds/`, {
             params: {
                 apiKey: API_KEY,
@@ -29,17 +40,25 @@ app.get('/api/data', async (req, res) => {
             }
         });
 
-        const data = response.data;
-        // 核心：按开赛时间排序
-        data.sort((a, b) => new Date(a.commence_time) - new Date(b.commence_time));
+        let allMatches = response.data;
 
-        cacheData = data;
+        // 【关键逻辑】将五大联赛排在最前面，其他比赛排在后面
+        allMatches.sort((a, b) => {
+            const aIsBig = BIG_FIVE_KEYS.includes(a.sport_key);
+            const bIsBig = BIG_FIVE_KEYS.includes(b.sport_key);
+            if (aIsBig && !bIsBig) return -1;
+            if (!aIsBig && bIsBig) return 1;
+            return new Date(a.commence_time) - new Date(b.commence_time);
+        });
+
+        cacheData = allMatches;
         lastFetchTime = now;
-        res.json(data);
+        res.json(allMatches);
     } catch (error) {
+        console.error('API Error:', error.message);
         if (cacheData) return res.json(cacheData);
-        res.status(500).json({ error: 'API Error', detail: error.message });
+        res.status(500).json({ error: '数据抓取失败' });
     }
 });
 
-app.listen(PORT, () => console.log(`量子终端 V2.4 运行中`));
+app.listen(PORT, () => console.log(`量子探测器 V2.5 已上线`));
