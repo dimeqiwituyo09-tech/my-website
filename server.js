@@ -6,10 +6,9 @@ const PORT = process.env.PORT || 3000;
 
 const API_KEY = process.env.ODDS_API_KEY || 'YOUR_KEY_HERE';
 
-// 缓存逻辑
 let cacheData = null;
 let lastFetchTime = 0;
-const CACHE_DURATION = 5 * 60 * 1000; 
+const CACHE_DURATION = 3 * 60 * 1000; // 缩短缓存到3分钟，方便调试
 
 app.use(express.static(path.join(__dirname)));
 
@@ -20,7 +19,6 @@ app.get('/api/data', async (req, res) => {
     }
 
     try {
-        // 请求即将开始的所有足球比赛
         const response = await axios.get(`https://api.the-odds-api.com/v4/sports/soccer/odds/`, {
             params: {
                 apiKey: API_KEY,
@@ -32,17 +30,16 @@ app.get('/api/data', async (req, res) => {
         });
 
         const data = response.data;
-        // 按时间排序
+        // 核心：按开赛时间排序
         data.sort((a, b) => new Date(a.commence_time) - new Date(b.commence_time));
 
         cacheData = data;
         lastFetchTime = now;
         res.json(data);
     } catch (error) {
-        console.error('API Error:', error.message);
         if (cacheData) return res.json(cacheData);
-        res.status(500).json({ error: '数据抓取失败', detail: error.message });
+        res.status(500).json({ error: 'API Error', detail: error.message });
     }
 });
 
-app.listen(PORT, () => console.log(`量子终端已启动 | 端口: ${PORT}`));
+app.listen(PORT, () => console.log(`量子终端 V2.4 运行中`));
