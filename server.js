@@ -27,30 +27,44 @@ app.get('/api/data', async (req, res) => {
         return res.json(cacheData);
     }
 
+    const BIG_FIVE = [
+        'soccer_epl', 'soccer_spain_la_liga', 'soccer_germany_bundesliga', 
+        'soccer_italy_serie_a', 'soccer_france_ligue_1'
+    ];
+
     try {
-        console.log('📡 正在同步五大联赛实时数据...');
+        console.log('📡 正在多路同步五大联赛数据...');
         
-        // 并发抓取 5 个联赛，确保每个联赛的 48H 赛程都不被挤掉
-        const requests = BIG_FIVE.map(league => 
-            axios.get(`https://api.the-odds-api.com/v4/sports/${league}/odds/`, {
-                params: {
-                    apiKey: API_KEY,
-                    regions: 'eu',
-                    markets: 'h2h',
-                    bookmakers: 'williamhill,pinnacle',
-                    dateFormat: 'iso'
-                }
-            })
+        // 使用 allSettled 代替 all，防止单个联赛失败导致整体报错
+        const results = await Promise.allSettled(
+            BIG_FIVE.map(league => 
+                axios.get(`https://api.the-odds-api.com/v4/sports/${league}/odds/`, {
+                    params: {
+                        apiKey: API_KEY,
+                        regions: 'eu',
+                        markets: 'h2h',
+                        bookmakers: 'williamhill,pinnacle',
+                        dateFormat: 'iso'
+                    },
+                    timeout: 8000 // 设置 8 秒超时，防止卡死
+                })
+            )
         );
 
-        const responses = await Promise.all(requests);
         let combined = [];
-        
-        responses.forEach(response => {
-            if (response.data) combined = combined.concat(response.data);
+        results.forEach((result, index) => {
+            if (result.status === 'fulfilled') {
+                combined = combined.concat(result.value.data);
+            } else {
+                console.warn(`警告: 联赛 ${BIG_FIVE[index]} 抓取失败:`, result.reason.message);
+            }
         });
 
-        // 核心排序：按开赛时间先后排列
+        if (combined.length === 0) {
+            throw new Error('所有联赛请求均失败，请检查 API Key 额度或网络');
+        }
+
+        // 排序
         combined.sort((a, b) => new Date(a.commence_time) - new Date(b.commence_time));
 
         cacheData = combined;
@@ -58,10 +72,11 @@ app.get('/api/data', async (req, res) => {
         res.json(combined);
 
     } catch (error) {
-        console.error('抓取失败:', error.message);
-        if (cacheData) return res.json(cacheData);
-        res.status(500).json({ error: '卫星连接中断' });
+        console.error('致命错误:', error.message);
+        if (cacheData) return res.json(cacheData); // 失败时尝试返回旧缓存
+        res.status(500).json({ error: '卫星连接中断', detail: error.message });
     }
 });
 
 app.listen(PORT, () => console.log(`量子探测器 V2.8 (五大联赛版) 已启动`));
+
