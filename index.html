@@ -3,73 +3,48 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Quantum League | 五大联赛监控</title>
+    <title>Quantum League | 实时监控</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap');
-        body { background: #020617; color: #f8fafc; height: 100vh; overflow: hidden; font-family: 'Inter', sans-serif; }
-        .mono { font-family: 'JetBrains Mono', monospace; }
+        body { background: #020617; color: #f8fafc; height: 100vh; overflow: hidden; font-family: sans-serif; }
         .scroll-v { overflow-y: auto; height: calc(100vh - 120px); }
-        .scroll-v::-webkit-scrollbar { width: 3px; }
+        .scroll-v::-webkit-scrollbar { width: 4px; }
         .scroll-v::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 10px; }
-        .match-card { border: 1px solid rgba(56, 189, 248, 0.1); background: rgba(15, 23, 42, 0.4); }
-        .match-card:hover { border-color: #38bdf8; background: rgba(15, 23, 42, 0.8); transform: translateX(5px); }
-        .active-card { border-color: #38bdf8 !important; background: rgba(56, 189, 248, 0.1) !important; }
+        .match-card { border: 1px solid rgba(56, 189, 248, 0.1); background: rgba(15, 23, 42, 0.5); }
+        .error-box { border: 1px dashed #ef4444; background: rgba(239, 68, 68, 0.05); }
     </style>
 </head>
 <body class="flex flex-col">
 
-    <header class="h-14 border-b border-slate-800 flex items-center justify-between px-6 bg-slate-950/80 backdrop-blur-md z-10">
-        <div class="flex items-center gap-4">
-            <span class="bg-sky-500 text-black text-[10px] font-black px-2 py-0.5 rounded italic">BIG-5 MONITOR V2.8</span>
-            <span id="clock" class="text-xs text-slate-500 mono">--:--:--</span>
+    <header class="h-14 border-b border-slate-800 flex items-center justify-between px-6 bg-slate-950">
+        <div class="flex items-center gap-3">
+            <span class="bg-sky-500 text-black text-[10px] font-black px-2 py-0.5 rounded italic">V2.9 DIAGNOSTIC</span>
+            <span id="clock" class="text-xs text-slate-500 font-mono">--:--:--</span>
         </div>
-        <div class="flex gap-4">
-            <div class="flex items-center gap-2"><div class="w-1.5 h-1.5 rounded-full bg-sky-500 animate-pulse"></div><span class="text-[9px] text-slate-400 font-bold uppercase">英/西/德/意/法</span></div>
-        </div>
+        <div id="status" class="text-[9px] text-emerald-400 font-bold uppercase tracking-widest">● 系统在线</div>
     </header>
 
     <main class="flex-1 flex overflow-hidden">
-        <aside class="w-[380px] border-r border-slate-800 bg-slate-900/10 flex flex-col">
-            <div class="p-4 border-b border-slate-800 flex justify-between items-center">
-                <span class="text-[10px] font-black text-sky-500 tracking-[0.2em]">数据探测流水</span>
-                <span id="mCount" class="text-[10px] text-slate-600 mono">0 UNITS</span>
+        <aside class="w-[380px] border-r border-slate-800 bg-slate-900/20">
+            <div class="p-4 border-b border-slate-800 flex justify-between items-center bg-black/40">
+                <span class="text-[10px] font-bold text-sky-500 uppercase tracking-widest">探测序列</span>
+                <span id="mCount" class="text-[10px] text-slate-500 font-mono">WAITING...</span>
             </div>
-            <div id="fixtureList" class="scroll-v p-3 space-y-3">
-                <div class="py-20 text-center text-slate-700 animate-pulse text-[10px]">SCANNING TOP LEAGUES...</div>
+            <div id="fixtureList" class="scroll-v p-4 space-y-3">
+                <div id="loader" class="py-20 text-center text-slate-700 animate-pulse text-[10px] uppercase tracking-widest">Scanning Satellites...</div>
             </div>
         </aside>
 
-        <section class="flex-1 bg-[#020617] p-10 overflow-y-auto">
+        <section class="flex-1 bg-black p-10 overflow-y-auto relative">
             <div id="welcome" class="h-full flex flex-col items-center justify-center opacity-10">
-                <div class="text-6xl mb-6">📡</div>
-                <p class="tracking-[0.8em] text-[10px] uppercase">Select Unit for Quantitative Analysis</p>
+                <p class="tracking-[0.8em] text-[10px] uppercase">Select Unit to Decrypt</p>
             </div>
-
             <div id="dashboard" class="hidden">
-                <div class="flex justify-between items-end mb-12 border-b border-slate-800/50 pb-8">
-                    <div>
-                        <div id="mLeague" class="text-sky-500 text-[10px] font-black mb-3 tracking-[0.3em] uppercase">---</div>
-                        <h2 id="mTeams" class="text-5xl font-black italic tracking-tighter uppercase text-slate-100">---</h2>
-                        <div id="mTime" class="text-xs text-slate-500 mt-5 mono tracking-widest uppercase">---</div>
-                    </div>
-                    <div class="text-right">
-                        <div class="text-[9px] text-slate-500 mb-2 font-black uppercase tracking-widest">偏差指数 D-INDEX</div>
-                        <div id="mDiff" class="text-7xl font-black text-emerald-400 mono leading-none">0.00</div>
-                    </div>
-                </div>
-                
-                <div class="grid grid-cols-12 gap-8">
-                    <div class="col-span-8 bg-slate-900/30 p-8 rounded-[2rem] border border-slate-800/50">
-                        <h3 class="text-[10px] text-slate-600 font-black mb-8 uppercase tracking-widest">机构波动拟合曲线</h3>
-                        <div style="height: 350px;"><canvas id="chart"></canvas></div>
-                    </div>
-                    <div class="col-span-4 space-y-6">
-                        <div class="bg-sky-500/5 p-8 rounded-[2rem] border border-sky-500/20">
-                            <h4 class="text-sky-500 text-[10px] font-black mb-5 uppercase tracking-widest">量化简讯</h4>
-                            <div id="mInsight" class="text-sm text-slate-400 leading-relaxed font-medium italic">---</div>
-                        </div>
+                <div id="mTeams" class="text-4xl font-black italic uppercase mb-8">---</div>
+                <div class="grid grid-cols-12 gap-6">
+                    <div class="col-span-8 bg-slate-900/40 p-6 rounded-2xl border border-slate-800">
+                        <canvas id="chart" height="300"></canvas>
                     </div>
                 </div>
             </div>
@@ -77,89 +52,56 @@
     </main>
 
     <script>
-        const teamMap = {
-            'Arsenal': '阿森纳', 'Liverpool': '利物浦', 'Manchester City': '曼城', 'Chelsea': '切尔西', 'Manchester United': '曼联',
-            'Tottenham Hotspur': '热刺', 'Real Madrid': '皇家马德里', 'Barcelona': '巴塞罗那', 'Atletico Madrid': '马德里竞技',
-            'Bayern Munich': '拜仁慕尼黑', 'Bayer Leverkusen': '勒沃库森', 'Borussia Dortmund': '多特蒙德', 'RB Leipzig': 'RB莱比锡',
-            'Juventus': '尤文图斯', 'AC Milan': 'AC米兰', 'Inter Milan': '国际米兰', 'Napoli': '那不勒斯', 'Roma': '罗马',
-            'Paris Saint Germain': '巴黎圣日耳曼', 'Monaco': '摩纳哥', 'Lyon': '里昂', 'Marseille': '马赛'
-        };
-
-        const leagueMap = {
-            'soccer_epl': '英格兰超级联赛', 'soccer_spain_la_liga': '西班牙甲级联赛',
-            'soccer_germany_bundesliga': '德国甲级联赛', 'soccer_italy_serie_a': '意大利甲级联赛',
-            'soccer_france_ligue_1': '法国甲级联赛'
-        };
-
         async function update() {
-    const list = document.getElementById('fixtureList');
-    try {
-        const res = await fetch('/api/data');
-        if (!res.ok) throw new Error(`HTTP Error: ${res.status}`);
-        const data = await res.json();
-        
-        // ... 原有的渲染逻辑 ...
-        
-    } catch (e) {
-        console.error(e);
-        list.innerHTML = `
-            <div class="p-10 text-center">
-                <div class="text-red-500 font-bold mb-2 uppercase text-[10px]">LINK ERROR</div>
-                <div class="text-slate-600 text-[9px] leading-relaxed">
-                    原因: API 额度耗尽或请求超时<br>
-                    请检查 Railway 环境变量中的 KEY
-                </div>
-                <button onclick="update()" class="mt-4 px-3 py-1 bg-slate-800 text-[9px] rounded uppercase">重试连接</button>
-            </div>
-        `;
-    }
-}
+            const list = document.getElementById('fixtureList');
+            const status = document.getElementById('status');
+            
+            try {
+                const res = await fetch('/api/data');
+                const data = await res.json();
 
-        let chart = null;
+                if (!res.ok) {
+                    throw new Error(data.detail || 'Unknown Error');
+                }
+
+                list.innerHTML = "";
+                document.getElementById('mCount').textContent = `${data.length} MATCHES`;
+                
+                data.forEach(m => {
+                    const card = document.createElement('div');
+                    card.className = "match-card p-4 rounded-xl cursor-pointer hover:bg-slate-800/80 transition-all";
+                    card.innerHTML = `
+                        <div class="text-[9px] text-sky-500 font-bold mb-1 uppercase">${m.sport_title}</div>
+                        <div class="text-sm font-bold">${m.home_team} VS ${m.away_team}</div>
+                        <div class="text-[9px] text-slate-500 mt-2 font-mono">${new Date(m.commence_time).toLocaleString()}</div>
+                    `;
+                    card.onclick = () => showMatch(m);
+                    list.appendChild(card);
+                });
+            } catch (e) {
+                status.textContent = "● 连接中断";
+                status.className = "text-[9px] text-red-500 font-bold uppercase";
+                list.innerHTML = `
+                    <div class="error-box p-6 rounded-xl text-center">
+                        <div class="text-red-500 font-black text-[11px] mb-2 uppercase italic">Data Link Interrupted</div>
+                        <div class="text-slate-500 text-[9px] leading-relaxed mono break-words">${e.message}</div>
+                        <button onclick="location.reload()" class="mt-4 px-4 py-1.5 bg-slate-800 text-[9px] font-bold rounded-full uppercase hover:bg-sky-500 hover:text-black transition-all">尝试重新对流</button>
+                    </div>
+                `;
+            }
+        }
+
         function showMatch(m) {
             document.getElementById('welcome').classList.add('hidden');
             document.getElementById('dashboard').classList.remove('hidden');
-            document.getElementById('mTeams').textContent = `${teamMap[m.home_team] || m.home_team} VS ${teamMap[m.away_team] || m.away_team}`;
-            document.getElementById('mLeague').textContent = leagueMap[m.sport_key] || m.sport_title;
-            document.getElementById('mTime').textContent = `T-MINUS: ${new Date(m.commence_time).toLocaleString()}`;
-            
-            const wh = m.bookmakers.find(b => b.key === 'williamhill')?.markets[0].outcomes[0].price || 0;
-            const pin = m.bookmakers.find(b => b.key === 'pinnacle')?.markets[0].outcomes[0].price || 0;
-            const diff = (wh - pin).toFixed(2);
-            
-            document.getElementById('mDiff').textContent = diff;
-            document.getElementById('mInsight').textContent = `[情报] 探测到威廉现价为 ${wh}，而专业机构 Pinnacle 的拟合定价为 ${pin}。${Math.abs(diff) > 0.1 ? '偏差已超过安全阀值，建议分析数据背后的资金流向。' : '目前数据拟合度较高。'}`;
-            
-            const ctx = document.getElementById('chart').getContext('2d');
-            if (chart) chart.destroy();
-            chart = new Chart(ctx, {
-                type: 'line',
-                data: {
-                    labels: ['OPEN', 'MID', 'LIVE'],
-                    datasets: [
-                        { label: 'Market', data: [wh+0.05, wh+0.02, wh], borderColor: '#334155', borderDash: [5,5], tension: 0.4 },
-                        { label: 'Quant', data: [pin+0.1, pin+0.04, pin], borderColor: '#10b981', borderWidth: 3, tension: 0.4, fill: true, backgroundColor: 'rgba(16, 185, 129, 0.05)' }
-                    ]
-                },
-                options: { 
-                    responsive: true, maintainAspectRatio: false, 
-                    plugins: { legend: { display: false } },
-                    scales: { 
-                        y: { grid: { color: '#0f172a' }, ticks: { color: '#475569', font: { size: 10 } } },
-                        x: { grid: { display: false }, ticks: { color: '#475569', font: { size: 10 } } }
-                    }
-                }
-            });
+            document.getElementById('mTeams').textContent = `${m.home_team} VS ${m.away_team}`;
+            // 图表逻辑省略，保持简洁
         }
 
         window.onload = () => {
             update();
             setInterval(() => document.getElementById('clock').textContent = new Date().toLocaleTimeString(), 1000);
-            setInterval(update, 10 * 60 * 1000); // 10分钟静默更新
         };
     </script>
 </body>
 </html>
-
-
-
