@@ -1,37 +1,25 @@
 import os
-import requests
 from flask import Flask, jsonify, send_from_directory
-from datetime import datetime, timedelta
+import requests
 from flask_cors import CORS
 
-# 【关键】这一行必须在函数外面，且名字必须是 app
+# 【重点】app 必须定义在最外层，不能缩进
 app = Flask(__name__, static_folder='.')
 CORS(app)
 
-API_KEY = os.getenv("ODDS_API_KEY")
-
 @app.route('/api/data')
 def get_data():
-    leagues = ['soccer_epl', 'soccer_spain_la_liga', 'soccer_germany_bundesliga', 'soccer_italy_serie_a', 'soccer_france_ligue_1']
-    all_matches = []
-    now = datetime.utcnow()
-    limit_time = now + timedelta(hours=48)
-
-    if not API_KEY:
-        return jsonify({"error": "Missing API Key"}), 500
-
-    for league in leagues:
-        url = f"https://api.the-odds-api.com/v4/sports/{league}/odds/?apiKey={API_KEY}&regions=uk&markets=h2h&bookmakers=williamhill,pinnacle"
-        try:
-            res = requests.get(url).json()
-            if isinstance(res, list):
-                for m in res:
-                    m_time = datetime.strptime(m['commence_time'], '%Y-%m-%dT%H:%M:%SZ')
-                    if now <= m_time <= limit_time:
-                        all_matches.append(m)
-        except: continue
-            
-    return jsonify(all_matches)
+    api_key = os.getenv("ODDS_API_KEY")
+    if not api_key:
+        return jsonify([])
+    
+    # 极简取数逻辑，先确保能跑通
+    url = f"https://api.the-odds-api.com/v4/sports/soccer_epl/odds/?apiKey={api_key}&regions=uk&markets=h2h"
+    try:
+        r = requests.get(url)
+        return jsonify(r.json() if r.status_code == 200 else [])
+    except:
+        return jsonify([])
 
 @app.route('/')
 def index():
@@ -40,4 +28,3 @@ def index():
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 3000))
     app.run(host='0.0.0.0', port=port)
-
